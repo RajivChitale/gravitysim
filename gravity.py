@@ -1,8 +1,3 @@
-# basic with trails
-# with quad trees
-# 3d
-
-
 import pygame
 import numpy as np
 import math
@@ -25,12 +20,13 @@ mode = 0
 
 # body has mass, position, velocity, acceleration
 class body:
-    def __init__(self, m = 1.0, p=[0.0, 0.0], v= [0.0, 0.0]):
+    def __init__(self, m = 1.0, p=[0.0, 0.0], v= [0.0, 0.0], color="white"):
         self.m = m
-        self.r = 3 * m ** (1/3)
+        self.r = 3 * m ** (1/3) 
         self.p = np.array(p)
         self.v = np.array(v)
         self.a = np.array([0,0])
+        self.color = color
 
 body_list = []
 
@@ -52,19 +48,33 @@ body_list = []
 #         body_list.append(body(m=m[i], p= (px[i], py[i]), v= (vx[i], vy[i]) ) )
 
 # radial sample
-def init_radial_sample(size=100, position=[0,0] ,radius = [100,40], speed = [5,2], mass = [3,0]):
+def init_radial_sample(size=100, position=[0,0] ,radius = [100,40], speed = [2,2], mass = [3,1]):
     theta = np.random.random_sample(size) * 2* np.pi
     direction = np.sign(radius[0])
     r = np.abs(np.random.normal(abs(radius[0]), abs(radius[1]), size))
-    s = np.random.normal(speed[0], speed[1], size)
+    s = np.random.normal(speed[0], speed[1], size) # slight variation in speed
     #s = s/(np.sqrt(np.abs(r))+4)
-    s = s+ 0.5*np.sqrt(G*size*mass[0]*1/(r+5))  # initial speed based on radius, G and mass of set
+    #s = s+ 0.5*np.sqrt(G*size*mass[0]*1/(r+5))  # initial speed based on radius, G and mass of set
+
+    # finding mass of center of revolution
+    vcm = np.array([0.0, 0.0])
+    net_mass = size*mass[0]/2   
+    for b in body_list:
+        disp = b.p - (pobs +startp)                      # vector along line joining two bodies
+        dist = (disp[0]**2 + disp[1]**2) **(1/2) 
+        if(dist<b.r): 
+            net_mass =  b.m
+            vcm = b.v         # borrow velocity of center
+            break
+
+    s = s+0.27*np.sqrt(G*size*net_mass/(r+5))
     s = s*direction
+
 
     px= r*np.cos(theta)+position[0]
     py= r*np.sin(theta) +position[1]
-    vx= -s*np.sin(theta)
-    vy= s*np.cos(theta)
+    vx= -s*np.sin(theta) + vcm[0]
+    vy= s*np.cos(theta) + vcm[1]
     m = np.abs(np.random.normal(mass[0], mass[1], size))
 
     for i in range(size):
@@ -86,6 +96,11 @@ def in_frame(px, py):
 
 # add masses and combine properties
 def combine(first, second):
+    if(second.m > first.m): first.color = second.color
+    elif second.m+first.m == 0:
+        body_list.remove(first)
+        body_list.remove(second)
+
     first_frac = first.m / (first.m + second.m)
     second_frac = second.m / (first.m + second.m)
 
@@ -153,6 +168,8 @@ mousedown = False
 erase = False
 cursor_color = ["cyan", "blue", "yellow"]
 eraser_radius = 20
+spawn_radius = 5
+spawn_count = 10
 
 while running: 
     # wipe away anything from last frame
@@ -175,15 +192,19 @@ while running:
         
     for obj in body_list:   
         if(in_frame(obj.p[0], obj.p[1])):
-            pygame.draw.circle(screen, "white", obj.p - pobs, obj.r)         # draw body
+            pygame.draw.circle(screen, obj.color, obj.p - pobs, obj.r)         # draw body
 
 
+    # draw cursor
     cursor_pos = np.array(pygame.mouse.get_pos())
     if erase:
         pygame.draw.circle(screen, "gray", cursor_pos, radius=eraser_radius, width=1)
-    else:
-        pygame.draw.circle(screen, cursor_color[mode], cursor_pos, radius=6, width=1)
+    elif mode==0:
+        pygame.draw.circle(screen, cursor_color[mode], cursor_pos, radius=spawn_radius, width=1)
+    elif mode==1:
+        pygame.draw.circle(screen, cursor_color[mode], cursor_pos, radius=spawn_count, width=1)
 
+    # show lines when dragging mouse
     if mousedown:
         endp = np.array(pygame.mouse.get_pos())
         if erase:
@@ -191,14 +212,12 @@ while running:
             for b in body_list:
                 disp = b.p - (pobs +endp)                      # vector along line joining two bodies
                 dist = (disp[0]**2 + disp[1]**2) **(1/2) 
-                if(dist<eraser_radius): body_list.remove(b)
+                if(dist<eraser_radius+0.5*b.r): body_list.remove(b)     # erase bodies
         elif mode==0:
-            pygame.draw.line(screen, start_pos=startp, end_pos=endp, color="cyan")
+            pygame.draw.line(screen, start_pos=startp, end_pos=endp, color=cursor_color[mode])
         elif mode==1:
-            pygame.draw.line(screen, start_pos=startp, end_pos= (endp[0], startp[1]) , color="blue")
-            pygame.draw.line(screen, start_pos=endp, end_pos= (endp[0], startp[1]) , color="blue")
-        elif mode==2:
-            pygame.draw.line(screen, start_pos=startp, end_pos=endp, color="yellow")
+            pygame.draw.line(screen, start_pos=startp, end_pos= (endp[0], startp[1]) , color=cursor_color[mode])
+            pygame.draw.line(screen, start_pos=endp, end_pos= (endp[0], startp[1]) , color=cursor_color[mode])
 
 
     # poll for events
@@ -216,7 +235,7 @@ while running:
             if event.key == pygame.K_p:
                 paused = not paused
             if event.key == pygame.K_m:
-                mode = (mode+1)%3
+                mode = (mode+1)%2
             if event.key == pygame.K_x:
                 erase = not erase
 
@@ -224,17 +243,15 @@ while running:
             startp = np.array(pygame.mouse.get_pos())
             mousedown = True
             
-
+        # create new bodies
         if event.type == pygame.MOUSEBUTTONUP:
             endp = np.array(pygame.mouse.get_pos())
             if erase:
                 pass
             elif mode==0:
-                body_list.append(body(m=5,p = startp + pobs, v = (endp-startp)*0.05 ))
+                body_list.append(body(m= (spawn_radius/3)**3, p = startp + pobs, v = (endp-startp)*0.05 ))
             elif mode==1:
-                init_radial_sample(10, position=startp +pobs, radius= (endp-startp)*0.5, speed=[1,1])
-            elif mode==2:
-                body_list.append(body(m=100,p = startp + pobs, v = (endp-startp)*0.05 ))
+                init_radial_sample(size=int(spawn_count), position=startp +pobs, radius= (endp-startp)*0.5, speed=[0,0])
             mousedown = False
 
     keys = pygame.key.get_pressed()
@@ -253,6 +270,20 @@ while running:
         pobs[1] += move_speed*dt 
     if keys[pygame.K_w]:
         pobs[1] -= move_speed*dt 
+        
+    # adjust radius of new bodies
+    if keys[pygame.K_EQUALS] :
+        if mode==0 and spawn_radius < 20:
+            spawn_radius += 20 * dt
+        if mode==1 and spawn_count < 20:
+            spawn_count += 10 * dt
+    if keys[pygame.K_MINUS]:
+        if mode==0 and spawn_radius > 2:
+            spawn_radius -= 20 * dt
+            if spawn_radius < 2: spawn_radius=2
+        if mode==1 and spawn_count > 1:
+            spawn_count -= 10 * dt
+            if spawn_count < 3: spawn_count = 3
 
     # flip() the display to put your work on screen
     pygame.display.flip()
