@@ -21,7 +21,7 @@ The farther the mouse is dragged horizontally, the greater is the radius of the 
 Dragging the mouse left or right also determines the direction of revolution.
 The farther the mouse is dragged vertically, the greater is the deviation in radius of the disc.
 
-Example: Epicycles in a three body system
+Example: Cycloid motion of a moon in a three body system
 ![epicycles](https://user-images.githubusercontent.com/97620191/227765857-8f45b225-15cd-45d7-8d9b-1bda6e688c1b.png)
 
 To generate a moving cluster- spawn a single moving body, pause and spawn a cluster around it. \
