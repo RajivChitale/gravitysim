@@ -2,10 +2,9 @@ import pygame
 import numpy as np
 import math
 
-# g m M / R^2
 width, height = 1280, 720
 pobs = np.array([-width/2, -height/2])
-move_speed = 200
+move_speed = 400
 G = 15
 speedup = 4
 f = 5
@@ -187,8 +186,9 @@ while running:
             trail_phase[t] -= speedup       # trail ages
         if(trail_phase[t] < 0):
             trail_points.remove(t)      # trail gets over
-        if(show_trails==True and in_frame(t[0], t[1])):
-            pygame.draw.circle(screen, "navy", (t[0]-pobs[0], t[1]-pobs[1]), 1)       # display trail
+        elif(show_trails==True and in_frame(t[0], t[1])):
+            strength = int(60*trail_phase[t]/trail_length)
+            pygame.draw.circle(screen, pygame.Color(strength,strength,2*strength+50), (t[0]-pobs[0], t[1]-pobs[1]), 1)       # display trail
         
     for obj in body_list:   
         if(in_frame(obj.p[0], obj.p[1])):
@@ -270,7 +270,7 @@ while running:
         pobs[1] += move_speed*dt 
     if keys[pygame.K_w]:
         pobs[1] -= move_speed*dt 
-        
+
     # adjust radius of new bodies
     if keys[pygame.K_EQUALS] :
         if mode==0 and spawn_radius < 20:
